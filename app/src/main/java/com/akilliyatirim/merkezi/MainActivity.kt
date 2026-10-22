@@ -91,7 +91,7 @@ class MainActivity : Activity() {
         val status = label("", 13, muted, false).apply { setPadding(0, dp(8), 0, dp(8)) }
         page.addView(status)
         page.addView(actionButton("Listeye ekle") {
-            val value = input.text.toString().trim().replace("\\n", "")
+            val value = input.text.toString().trim().replace("\n", "")
             if (value.isBlank()) {
                 status.text = "Önce bir varlık adı veya kodu yaz."
             } else {
@@ -135,10 +135,10 @@ class MainActivity : Activity() {
     }
 
     private fun savedWatchlist(): List<String> =
-        prefs.getString("watchlist", "").orEmpty().split("\\n").filter { it.isNotBlank() }
+        prefs.getString("watchlist", "").orEmpty().split("\n").filter { it.isNotBlank() }
 
     private fun saveWatchlist(items: List<String>) {
-        prefs.edit().putString("watchlist", items.joinToString("\\n")).apply()
+        prefs.edit().putString("watchlist", items.joinToString("\n")).apply()
     }
 
     private fun showRiskCalculator() {
