@@ -17,6 +17,7 @@ class MainActivity : Activity() {
     private val green = Color.rgb(40, 190, 140)
     private val ink = Color.rgb(28, 39, 54)
     private val muted = Color.rgb(105, 119, 139)
+    private val prefs by lazy { getSharedPreferences("akilli_yatirim_merkezi", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +47,7 @@ class MainActivity : Activity() {
             Triple("Fırsat analizi", "Piyasa verileri ve analizler için merkez", "Fırsatları incele"),
             Triple("Alım ve risk planı", "Hedef fiyat ve olası zarar senaryosu", "Plan oluştur"),
             Triple("Sermaye simülatörü", "Örnek getiri, kayıp ve birikim hesabı", "Hesapla"),
-            Triple("İzleme listem", "Takip etmek istediğin varlıkları düzenle", "Listeyi aç")
+            Triple("İzleme listem", "Takip etmek istediğin varlıkları kaydet", "Listeyi aç")
         )
         cards.forEachIndexed { index, item ->
             val card = LinearLayout(this).apply {
@@ -71,8 +72,73 @@ class MainActivity : Activity() {
             1 -> showRiskCalculator()
             2 -> showReturnCalculator()
             0 -> showInfo("Fırsat analizi", "Bu bölüm güvenilir piyasa veri kaynağı bağlandıktan sonra çalışacak. Şimdilik gerçek zamanlı fiyat veya sinyal gösterilmez.")
-            else -> showInfo("İzleme listem", "İzleme listesine kayıt özelliği sonraki adımda eklenecek.")
+            else -> showWatchlist()
         }
+    }
+
+    private fun showWatchlist() {
+        val page = basePage("İzleme listem")
+        page.addView(label("Takip etmek istediğin hisse veya kripto varlığın kodunu/adını yazıp kaydet. Kayıtlar bu telefonda saklanır.", 14, muted, false).apply {
+            setPadding(0, 0, 0, dp(16))
+        })
+        val input = EditText(this).apply {
+            hint = "Örn. THYAO, BTC, ASELS"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+            textSize = 16f
+            setSingleLine(true)
+        }
+        page.addView(input, matchWrap())
+        val status = label("", 13, muted, false).apply { setPadding(0, dp(8), 0, dp(8)) }
+        page.addView(status)
+        page.addView(actionButton("Listeye ekle") {
+            val value = input.text.toString().trim().replace("\\n", "")
+            if (value.isBlank()) {
+                status.text = "Önce bir varlık adı veya kodu yaz."
+            } else {
+                val items = savedWatchlist().toMutableList()
+                if (items.any { it.equals(value, ignoreCase = true) }) {
+                    status.text = "$value zaten izleme listende."
+                } else {
+                    items.add(value.uppercase())
+                    saveWatchlist(items)
+                    showWatchlist()
+                }
+            }
+        }, matchWrap())
+        page.addView(label("Kayıtlı varlıklar", 18, ink, true).apply { setPadding(0, dp(24), 0, dp(10)) })
+        val items = savedWatchlist()
+        if (items.isEmpty()) {
+            page.addView(label("Henüz kayıt yok.", 14, muted, false).apply { setPadding(0, dp(8), 0, dp(16)) })
+        } else {
+            items.forEach { item ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(dp(12), dp(8), dp(8), dp(8))
+                    setBackgroundColor(Color.WHITE)
+                }
+                row.addView(label(item, 16, ink, true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                row.addView(actionButton("Sil") {
+                    saveWatchlist(savedWatchlist().filterNot { it.equals(item, ignoreCase = true) })
+                    showWatchlist()
+                })
+                val params = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                params.bottomMargin = dp(8)
+                page.addView(row, params)
+            }
+        }
+        page.addView(label("Not: Bu liste şimdilik yalnızca kayıt tutar; fiyatlar otomatik güncellenmez.", 12, muted, false).apply {
+            setPadding(0, dp(12), 0, dp(16))
+        })
+        page.addView(actionButton("Ana ekrana dön") { showHome() })
+        setContentView(ScrollView(this).apply { addView(page) })
+    }
+
+    private fun savedWatchlist(): List<String> =
+        prefs.getString("watchlist", "").orEmpty().split("\\n").filter { it.isNotBlank() }
+
+    private fun saveWatchlist(items: List<String>) {
+        prefs.edit().putString("watchlist", items.joinToString("\\n")).apply()
     }
 
     private fun showRiskCalculator() {
